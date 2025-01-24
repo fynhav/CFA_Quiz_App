@@ -35,9 +35,11 @@ def quiz():
     """
     Runs the quiz flow using the CSV file in st.session_state.csv_file.
     """
-    # --- Load and shuffle questions once per session/quiz
+
+    # Load and shuffle questions once per session
     if "shuffled_df" not in st.session_state:
         df = load_questions(st.session_state.csv_file)
+        # Shuffle the DataFrame randomly
         st.session_state.shuffled_df = df.sample(frac=1).reset_index(drop=True)
 
     shuffled_df = st.session_state.shuffled_df
@@ -47,22 +49,32 @@ def quiz():
     if q_idx >= len(shuffled_df):
         st.write("Quiz finished! You've gone through all the questions.")
         display_score_bar()
+
+        # Show a "Back to Main Menu" button
+        if st.button("Back to Main Menu"):
+            st.session_state.csv_file = None
+            st.session_state.current_question = 0
+            st.session_state.answered = False
+            st.session_state.selected_answer = None
+            st.session_state.score = 0
+            st.rerun()
         return
 
-    # Retrieve row data
+    # ============ Display the Current Question ============
+
+    # Extract question data
     question_text = shuffled_df.loc[q_idx, "question"]
     optionA = shuffled_df.loc[q_idx, "optionA"]
     optionB = shuffled_df.loc[q_idx, "optionB"]
     optionC = shuffled_df.loc[q_idx, "optionC"]
     optionD = shuffled_df.loc[q_idx, "optionD"]
-    correct_ans = shuffled_df.loc[q_idx, "correctAnswer"]
+    correct_ans = shuffled_df.loc[q_idx, "correctAnswer"]  # "A", "B", "C", or "D"
     explanation = shuffled_df.loc[q_idx, "explanation"]
 
-    # Display question
     st.subheader(f"Question {q_idx + 1}")
     st.write(question_text)
 
-    # Build the label strings (e.g., "A) Berlin")
+    # Build labels for radio buttons (e.g. "A) Berlin")
     labelA = f"A) {optionA}"
     labelB = f"B) {optionB}"
     labelC = f"C) {optionC}"
@@ -77,6 +89,7 @@ def quiz():
     }
 
     def on_choice_change():
+        # If user changes their selection, allow new submission
         st.session_state.answered = False
 
     selected_label = st.radio(
@@ -86,83 +99,119 @@ def quiz():
         key="radio_answer",
         on_change=on_choice_change
     )
-
     st.session_state.selected_answer = label_to_letter[selected_label]
 
-    # Place Submit and Next Question side by side
-    col1, col2 = st.columns(2)
+    # ============ Buttons: Submit & Next Question ============
 
+    col1, col2 = st.columns(2)
     submit_clicked = col1.button("Submit", disabled=st.session_state.answered)
     next_clicked = col2.button("Next Question")
 
-    # If Submit was clicked, process the current question
-    if submit_clicked:
+    # If Submit clicked: check correctness, show explanation, update score
+    if submit_clicked and not st.session_state.answered:
         st.session_state.answered = True
-        st.session_state.current_question += 1  # Mark that we've answered one more question
+        # We consider this question answered, so increment current_question
+        st.session_state.current_question += 1
 
-        # Check correctness
         if st.session_state.selected_answer == correct_ans:
             st.success("Correct! ✅")
             st.session_state.score += 1
         else:
+            # e.g. correct_ans is "C", so correct option is "C) {optionC}"
             correct_label = f"{correct_ans}) {shuffled_df.loc[q_idx, 'option' + correct_ans]}"
             st.error(f"Incorrect! The correct answer is {correct_label}")
 
         # Show explanation
         st.info(f"Explanation: {explanation}")
 
-        # Display the score bar
+        # Display updated score bar
         display_score_bar()
 
-    # If Next Question is clicked, move on to the next question
-    if next_clicked:
-        # Reset the selected answer
+    # If Next Question clicked, move on (rerun)
+    if next_clicked and st.session_state.answered:
+        # Reset selected answer
         st.session_state.selected_answer = None
-        # Rerun the app so the next question is displayed
+        st.rerun()
+
+    # ============ Back to Main Menu at Bottom of Page ============
+
+    st.write("---")
+    if st.button("Back to Main Menu"):
+        st.session_state.csv_file = None
+        st.session_state.current_question = 0
+        st.session_state.answered = False
+        st.session_state.selected_answer = None
+        st.session_state.score = 0
         st.rerun()
 
 def main():
     st.title("Quiz Menu")
 
-    # If we haven't picked a chapter yet, show the menu
+    # If we haven't picked a chapter CSV yet, show menu
     if "csv_file" not in st.session_state or st.session_state.csv_file is None:
         st.write("**Please choose which chapter quiz you want to take:**")
 
-        # Create a row of buttons for each quiz
-        col1, col2, col3 = st.columns(3)
-
-        # Example: you can add as many chapters as you want
-        if col1.button("Chapter 1"):
-            st.session_state.csv_file = "chapter1.csv"
-            # Initialize quiz states
+        # -- Chapter 1
+        if st.button("Chapter 1 - Introduction to ESG Investing"):
+            st.session_state.csv_file = "chapter1.csv"  # update if needed
             st.session_state.current_question = 0
             st.session_state.answered = False
             st.session_state.selected_answer = None
             st.session_state.score = 0
             st.rerun()
 
-        if col2.button("Chapter 2"):
-            st.session_state.csv_file = "chapter2.csv"
-            # Initialize quiz states
+        # -- Chapter 2
+        if st.button("Chapter 2 - The ESG Market"):
+            st.session_state.csv_file = "chapter2.csv"  # update if needed
             st.session_state.current_question = 0
             st.session_state.answered = False
             st.session_state.selected_answer = None
             st.session_state.score = 0
             st.rerun()
 
-        # Add more chapters as needed:
-        # if col3.button("Chapter 3"):
-        #     st.session_state.csv_file = "chapter3.csv"
-        #     ... reset states ...
-        #     st.experimental_rerun()
+        # -- Chapter 3
+        if st.button("Chapter 3 - Environmental Factors"):
+            st.warning("Placeholder: No CSV attached yet.")
+            # If you have a CSV for Chapter 3, replace the code below:
+            # st.session_state.csv_file = "chapter3.csv"
+            # st.session_state.current_question = 0
+            # st.session_state.answered = False
+            # st.session_state.selected_answer = None
+            # st.session_state.score = 0
+            # st.rerun()
 
-        st.stop()  # Stop execution so we don't run the quiz function
+        # -- Chapter 4
+        if st.button("Chapter 4 - Social Factors"):
+            st.warning("Placeholder: No CSV attached yet.")
+
+        # -- Chapter 5
+        if st.button("Chapter 5 - Governance Factors"):
+            st.warning("Placeholder: No CSV attached yet.")
+
+        # -- Chapter 6
+        if st.button("Chapter 6 - Engagement and Stewardship"):
+            st.warning("Placeholder: No CSV attached yet.")
+
+        # -- Chapter 7
+        if st.button("Chapter 7 - ESG Analysis, Valuation, and Integration"):
+            st.warning("Placeholder: No CSV attached yet.")
+
+        # -- Chapter 8
+        if st.button("Chapter 8 - Integrated Portfolio Construction and Management"):
+            st.warning("Placeholder: No CSV attached yet.")
+
+        # -- Chapter 9
+        if st.button("Chapter 9 - Investment Mandates, Portfolio Analytics, and Client Reporting"):
+            st.warning("Placeholder: No CSV attached yet.")
+
+        st.stop()  # Stop so we don't run quiz() below
+
     else:
-        # We've chosen a CSV, so run the quiz
+        # We have chosen a CSV, run the quiz
         quiz()
 
 if __name__ == "__main__":
-    # Initialize any needed session keys if not set
+    # Initialize session variables if not set
     if "csv_file" not in st.session_state:
         st.session_state.csv_file = None
     if "answered" not in st.session_state:
